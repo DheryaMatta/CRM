@@ -1,26 +1,191 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Refined Vercel/Linear Color Palette */
+  
+  /* Light Mode Base */
+  --color-background: #ffffff;
+  --color-surface: #fafafa;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f5f5;
+  --color-surface-container: #eaeaea;
+  --color-surface-container-high: #d4d4d4;
+  --color-surface-container-highest: #a3a3a3;
+  --color-surface-variant: #f0f0f0;
+
+  /* Typography Colors */
+  --color-on-background: #171717;
+  --color-on-surface: #171717;
+  --color-on-surface-variant: #666666;
+  
+  /* Borders */
+  --color-outline: #888888;
+  --color-outline-variant: #eaeaea;
+
+  /* Primary Monochrome Action (Vercel Style) */
+  --color-primary: #4f46e5; /* Tailwind Indigo 600 */
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e0e7ff; /* Tailwind Indigo 100 */
+  --color-on-primary-container: #312e81; /* Tailwind Indigo 900 */
+  --color-primary-fixed: #e0e7ff;
+  --color-on-primary-fixed: #312e81;
+  --color-primary-fixed-dim: #818cf8;
+  --color-on-primary-fixed-variant: #4338ca;
+
+  /* Secondary / Accents (Subtle Blue) */
+  --color-secondary: #0070f3;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #ebf5ff;
+  --color-on-secondary-container: #0070f3;
+
+  /* Tertiary / Accents (Subtle Orange/Warning) */
+  --color-tertiary: #f5a623;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #fff4e6;
+  --color-on-tertiary-container: #f5a623;
+
+  /* Error States */
+  --color-error: #e00000;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffeded;
+  
+  /* Dark Mode Base (Inverse Variables) */
+  --color-inverse-surface: #0a0a0a;
+  --color-inverse-on-surface: #ededed;
+  --color-primary: #818cf8; /* Tailwind Indigo 400 */
+  --color-on-primary: #000000;
+  --color-primary-container: #3730a3; /* Tailwind Indigo 800 */
+  --color-on-primary-container: #e0e7ff;
+  --color-surface-dim: #171717; /* Used for dark mode cards */
+  
+  --color-primary-fixed: #e0e7ff;
+  --color-on-primary-fixed: #312e81;
+  --color-primary-fixed-dim: #818cf8;
+  --color-on-primary-fixed-variant: #4338ca;
+  
+  --color-secondary-fixed: #0070f3;
+  --color-secondary-fixed-dim: #3291ff;
+  
+  --color-tertiary-fixed: #f5a623;
+  --color-tertiary-fixed-dim: #f7b955;
+
+  /* Crisp Geometry (Border Radii) */
+  --radius-xl: 12px;
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --radius-DEFAULT: 6px;
+
+  /* Custom Spacing */
+  --spacing-base: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+  --spacing-gutter: 20px;
+  --spacing-container-padding: 32px;
+
+  /* Unified Inter Typography */
+  --font-inter: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-urbanist: var(--font-inter), sans-serif; /* Pointing Urbanist to Inter to unify */
+
+  --font-display: var(--font-inter);
+  --font-headline-lg: var(--font-inter);
+  --font-headline-md: var(--font-inter);
+  --font-headline-sm: var(--font-inter);
+  --font-headline-lg-mobile: var(--font-inter);
+
+  --font-body-lg: var(--font-inter);
+  --font-body-md: var(--font-inter);
+  --font-body-sm: var(--font-inter);
+  --font-label-md: var(--font-inter);
+  --font-label-sm: var(--font-inter);
+
+  /* Refined Text Sizes & Tracking */
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 24px;
+  --text-headline-sm--font-weight: 600;
+  --text-headline-sm--letter-spacing: -0.01em;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--letter-spacing: -0.03em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 22px;
+  --text-headline-md--line-height: 28px;
+  --text-headline-md--font-weight: 600;
+  --text-headline-md--letter-spacing: -0.02em;
+
+  --text-headline-lg-mobile: 24px;
+  --text-headline-lg-mobile--line-height: 32px;
+  --text-headline-lg-mobile--font-weight: 600;
+
+  --text-label-sm: 12px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-label-sm--font-weight: 500; /* Dropped from 600 for sleekness */
+
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-body-sm--font-weight: 400;
+
+  --text-display: 36px;
+  --text-display--line-height: 44px;
+  --text-display--letter-spacing: -0.04em;
+  --text-display--font-weight: 700;
+
+  --text-body-md: 14px; /* SaaS standard body size is 14px */
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--font-weight: 500;
+  
+  /* Subtle Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer utilities {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px; /* Reduced from 24px for tighter SaaS look */
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20; /* Reduced weight for thinner, sleeker icons */
+  }
+  .fill-icon {
+    font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 20;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: var(--font-inter);
+}
+
+.dark body {
+  background-color: #000000;
+  color: #ededed;
 }

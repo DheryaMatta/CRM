@@ -1,65 +1,226 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React from 'react';
+import { useCRM } from '@/context/CRMContext';
+import Link from 'next/link';
+import { TrendingUp, Info, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
+
+export default function Dashboard() {
+  const { mrr, activeDealsCount, winRate, tasks, deals, toggleTask } = useCRM();
+
+  const activeTasks = tasks.filter((t) => t.status === 'pending');
+  const recentDeals = deals.slice(0, 3); // show recent active deals
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col gap-xl">
+      {/* Welcome Header */}
+      <div>
+        <h3 className="font-body-md text-body-md text-on-surface-variant">
+          Welcome back, Sarah. Here&apos;s what&apos;s happening today.
+        </h3>
+      </div>
+
+      {/* Metric Cards (Bento Style) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
+        {/* MRR Card */}
+        <div className="bg-surface-container-lowest dark:bg-inverse-surface rounded-xl p-lg border border-outline-variant dark:border-outline flex flex-col justify-between hover:border-outline hover:shadow-md transition-all relative overflow-hidden group shadow-sm">
+
+          <div>
+            <h3 className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">
+              Monthly Recurring Revenue
+            </h3>
+            <div className="font-display text-display text-on-surface dark:text-inverse-on-surface">
+              ${(mrr / 1000).toFixed(0)}k
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-md">
+            <span className="inline-flex items-center text-secondary bg-secondary-container/30 dark:bg-secondary-container/10 px-2 py-1 rounded-full font-label-sm text-label-sm">
+              <TrendingUp size={14} className="mr-1" />
+              +12.5%
+            </span>
+            <span className="font-body-sm text-body-sm text-on-surface-variant">vs last month</span>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Active Deals Card */}
+        <div className="bg-surface-container-lowest dark:bg-inverse-surface rounded-xl p-lg border border-outline-variant dark:border-outline flex flex-col justify-between hover:border-outline hover:shadow-md transition-all relative overflow-hidden group shadow-sm">
+
+          <div>
+            <h3 className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">
+              Active Deals
+            </h3>
+            <div className="font-display text-display text-on-surface dark:text-inverse-on-surface">
+              {activeDealsCount}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-md">
+            <span className="inline-flex items-center text-tertiary bg-tertiary-container/20 dark:bg-tertiary-container/10 px-2 py-1 rounded-full font-label-sm text-label-sm">
+              <Info size={14} className="mr-1" />
+              {deals.filter((d) => d.priority === 'High').length} High Priority
+            </span>
+          </div>
         </div>
-      </main>
+
+        {/* Win Rate Card */}
+        <div className="bg-surface-container-lowest dark:bg-inverse-surface rounded-xl p-lg border border-outline-variant dark:border-outline flex flex-col justify-between hover:border-outline hover:shadow-md transition-all relative overflow-hidden group shadow-sm">
+
+          <div>
+            <h3 className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-2">
+              Win Rate
+            </h3>
+            <div className="font-display text-display text-on-surface dark:text-inverse-on-surface">
+              {winRate}%
+            </div>
+          </div>
+          <div className="w-full bg-surface-container-high dark:bg-surface-dim h-2 rounded-full mt-auto mb-2">
+            <div className="bg-primary h-full rounded-full" style={{ width: `${winRate}%` }}></div>
+          </div>
+          <span className="font-body-sm text-body-sm text-on-surface-variant">Top quartile performance</span>
+        </div>
+      </div>
+
+      {/* Main Content Area: Tasks & Pipeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-md">
+        {/* Smart Task Feed (AI Prioritized) */}
+        <div className="lg:col-span-1 bg-surface-container-lowest dark:bg-inverse-surface rounded-xl border border-outline-variant dark:border-outline flex flex-col h-[500px] shadow-sm">
+          <div className="p-md border-b border-outline-variant dark:border-outline flex justify-between items-center bg-surface-container-low dark:bg-surface-dim rounded-t-xl">
+            <div className="flex items-center gap-2">
+              <Zap className="text-primary fill-primary" size={24} />
+              <h3 className="font-headline-sm text-headline-sm text-on-surface dark:text-inverse-on-surface font-bold">
+                Smart Tasks
+              </h3>
+            </div>
+            <span className="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-2 py-1 rounded-full">
+              AI Sorted
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-sm space-y-sm">
+            {activeTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-on-surface-variant">
+                <CheckCircle2 size={36} className="text-on-surface-variant mb-2" />
+                <p className="font-body-md">All caught up!</p>
+              </div>
+            ) : (
+              activeTasks.map((t) => (
+                <div
+                  key={t.id}
+                  className="p-sm bg-surface dark:bg-surface-dim/30 rounded-lg border border-outline-variant/50 hover:border-primary/30 transition-all cursor-pointer group"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full font-label-sm text-label-sm ${
+                        t.category === 'High Intent'
+                          ? 'text-error bg-error-container/50 dark:bg-error-container/10'
+                          : t.category === 'Action Needed'
+                          ? 'text-tertiary bg-tertiary-container/20 dark:bg-tertiary-container/10'
+                          : 'text-secondary bg-secondary-container/30 dark:bg-secondary-container/10'
+                      }`}
+                    >
+                      {t.category}
+                    </span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{t.time}</span>
+                  </div>
+                  <h4 className="font-body-md text-body-md font-semibold text-on-surface dark:text-inverse-on-surface mb-1 group-hover:text-primary transition-colors">
+                    {t.title}
+                  </h4>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                    {t.description}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    {t.title.includes('Call') || t.category === 'High Intent' ? (
+                      <Link
+                        href="/contacts/sarah-chen"
+                        className="px-3 py-1 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm hover:bg-primary/95 transition-colors text-center"
+                      >
+                        Call Now
+                      </Link>
+                    ) : null}
+                    <button
+                      onClick={() => toggleTask(t.id)}
+                      className="px-3 py-1 bg-surface-container-low dark:bg-surface-dim text-on-surface dark:text-inverse-on-surface border border-outline-variant rounded-lg font-label-sm text-label-sm hover:bg-surface-container-high transition-colors"
+                    >
+                      Mark Complete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Pipeline Overview */}
+        <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-inverse-surface rounded-xl border border-outline-variant dark:border-outline flex flex-col h-[500px] overflow-hidden shadow-sm">
+          <div className="p-md border-b border-outline-variant dark:border-outline flex justify-between items-center bg-surface-container-low dark:bg-surface-dim rounded-t-xl">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface dark:text-inverse-on-surface font-bold">
+              Active Pipeline
+            </h3>
+            <Link href="/pipeline" className="font-label-md text-label-md text-primary hover:underline">
+              View All
+            </Link>
+          </div>
+          <div className="flex-1 p-md overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[500px]">
+              <thead>
+                <tr className="border-b border-outline-variant dark:border-outline">
+                  <th className="pb-3 font-label-md text-label-md text-on-surface-variant font-medium">
+                    Deal Name
+                  </th>
+                  <th className="pb-3 font-label-md text-label-md text-on-surface-variant font-medium">
+                    Stage
+                  </th>
+                  <th className="pb-3 font-label-md text-label-md text-on-surface-variant font-medium">
+                    Value
+                  </th>
+                  <th className="pb-3 font-label-md text-label-md text-on-surface-variant font-medium text-right">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="font-body-md text-body-md">
+                {recentDeals.map((deal) => (
+                  <tr
+                    key={deal.id}
+                    className="border-b border-outline-variant/30 last:border-0 hover:bg-surface-container-lowest dark:hover:bg-surface-container-low/20 transition-colors group"
+                  >
+                    <td className="py-4">
+                      <div className="font-semibold text-on-surface dark:text-inverse-on-surface group-hover:text-primary transition-colors">
+                        {deal.name}
+                      </div>
+                      <div className="font-body-sm text-body-sm text-on-surface-variant">
+                        {deal.contactName}
+                      </div>
+                    </td>
+                    <td className="py-4">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full font-label-sm text-label-sm ${
+                          deal.stage === 'Negotiation'
+                            ? 'text-primary bg-primary-container/20 dark:bg-primary-container/10'
+                            : deal.stage === 'Proposal'
+                            ? 'text-error bg-error-container/50 dark:bg-error-container/10'
+                            : 'text-secondary bg-secondary-container/30 dark:bg-secondary-container/10'
+                        }`}
+                      >
+                        {deal.stage}
+                      </span>
+                    </td>
+                    <td className="py-4 font-medium text-on-surface dark:text-inverse-on-surface">
+                      ${deal.value.toLocaleString()}
+                    </td>
+                    <td className="py-4 text-right">
+                      <Link
+                        href="/pipeline"
+                        className="p-2 inline-block rounded-full hover:bg-surface-container-high dark:hover:bg-surface-dim transition-colors text-on-surface-variant"
+                      >
+                        <ChevronRight size={20} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
