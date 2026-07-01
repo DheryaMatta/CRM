@@ -1,11 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useCRM } from '@/context/CRMContext';
+import React, { useState, useEffect } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { eventsAPI } from '@/lib/api';
 
 export default function CalendarAndTasks() {
-  const { tasks, toggleTask, addTask } = useCRM();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTasks = async () => {
+    setLoading(true);
+    const result = await eventsAPI.list();
+    if (result.data) {
+      setTasks(result.data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const toggleTask = async (id: string) => {
+    await eventsAPI.complete(id);
+    fetchTasks();
+  };
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskCat, setTaskCat] = useState<'High Intent' | 'Action Needed' | 'Meeting' | 'Info'>('Action Needed');
@@ -30,21 +49,23 @@ export default function CalendarAndTasks() {
     return [];
   };
 
-  const handleAddTask = (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle) return;
 
-    addTask({
+    await eventsAPI.create({
       title: taskTitle,
       description: taskDesc || 'No description provided.',
       category: taskCat,
       time: taskTime || 'Today',
+      status: 'pending'
     });
 
     setTaskTitle('');
     setTaskDesc('');
     setTaskCat('Action Needed');
     setTaskTime('');
+    fetchTasks();
   };
 
   // Generate calendar days array

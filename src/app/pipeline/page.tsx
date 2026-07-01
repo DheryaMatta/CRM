@@ -1,11 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useCRM, Deal } from '@/context/CRMContext';
+import React, { useState, useEffect } from 'react';
+import { Deal } from '@/context/CRMContext';
 import { Plus, ArrowLeft, ArrowRight, X, Compass, FileText, Handshake, CheckCircle } from 'lucide-react';
+import { dealsAPI } from '@/lib/api';
 
 export default function SalesPipeline() {
-  const { deals, moveDeal, addDeal } = useCRM();
+  const [deals, setDeals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDeals = async () => {
+    setLoading(true);
+    const result = await dealsAPI.list();
+    if (result.data) {
+      setDeals(result.data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchDeals();
+  }, []);
+
+  const moveDeal = async (dealId: string, targetStage: Deal['stage']) => {
+    await dealsAPI.updateStage(dealId, targetStage);
+    fetchDeals();
+  };
   const [modalOpen, setModalOpen] = useState(false);
 
   // Form states for new deal
@@ -31,19 +51,19 @@ export default function SalesPipeline() {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, targetStage: Deal['stage']) => {
+  const handleDrop = async (e: React.DragEvent, targetStage: Deal['stage']) => {
     e.preventDefault();
     const dealId = e.dataTransfer.getData('text/plain');
     if (dealId) {
-      moveDeal(dealId, targetStage);
+      await moveDeal(dealId, targetStage);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !value || !contactName) return;
 
-    addDeal({
+    await dealsAPI.create({
       name,
       value: Number(value),
       stage,
@@ -59,6 +79,7 @@ export default function SalesPipeline() {
     setContactName('');
     setPriority('Medium');
     setModalOpen(false);
+    fetchDeals();
   };
 
   // Get total value for a column stage
@@ -201,7 +222,7 @@ export default function SalesPipeline() {
             className="fixed inset-0 bg-on-background/50 backdrop-blur-xs"
             onClick={() => setModalOpen(false)}
           />
-          <div className="relative w-full max-w-md bg-surface dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-xl p-md shadow-xl z-10 animate-scale-up">
+          <div className="relative w-full max-w-[448px] bg-surface dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-xl p-md shadow-xl z-10 animate-scale-up">
             <div className="flex justify-between items-center mb-md border-b border-outline-variant pb-3">
               <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface dark:text-inverse-on-surface">
                 Create New Deal

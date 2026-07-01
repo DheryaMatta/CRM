@@ -1,15 +1,52 @@
 'use client';
 
-import React from 'react';
-import { useCRM } from '@/context/CRMContext';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Info, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
+import { analyticsAPI, dealsAPI, eventsAPI } from '@/lib/api';
 
 export default function Dashboard() {
-  const { mrr, activeDealsCount, winRate, tasks, deals, toggleTask } = useCRM();
+  const [stats, setStats] = useState<any>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeTasks = tasks.filter((t) => t.status === 'pending');
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [analyticsRes, dealsRes, eventsRes] = await Promise.all([
+          analyticsAPI.getDashboard(),
+          dealsAPI.list(),
+          eventsAPI.list()
+        ]);
+        if (analyticsRes.data) setStats(analyticsRes.data);
+        if (dealsRes.data) setDeals(dealsRes.data);
+        if (eventsRes.data) setTasks(eventsRes.data);
+      } catch (e) {
+        console.error(e);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
+  const toggleTask = async (id: string) => {
+    await eventsAPI.complete(id);
+    const eventsRes = await eventsAPI.list();
+    if (eventsRes.data) setTasks(eventsRes.data);
+  };
+
+  const mrr = stats?.totalRevenue || 0;
+  const activeDealsCount = stats?.dealsByStage?.filter((s: any) => !['won', 'lost'].includes(s.stage)).reduce((acc: number, curr: any) => acc + curr.count, 0) || 0;
+  const winRate = stats?.conversionRate || 0;
+
+  const activeTasks = tasks.filter((t) => t.status !== 'completed');
   const recentDeals = deals.slice(0, 3); // show recent active deals
+
+  if (loading) {
+    return <div className="p-xl text-center font-body-md text-on-surface-variant animate-pulse">Loading dashboard data...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-xl">

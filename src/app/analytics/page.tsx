@@ -1,20 +1,106 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, TrendingDown, CircleDollarSign, FileText, Download } from 'lucide-react';
+import { analyticsAPI } from '@/lib/api';
+
+interface DashboardStats {
+  totalContacts: number;
+  totalDeals: number;
+  totalRevenue: number;
+  wonDeals: number;
+  conversionRate: number;
+  monthlyRevenue: { month: string; revenue: number }[];
+  dealsByStage: { stage: string; count: number; value: number }[];
+  contactsByStatus: { status: string; count: number }[];
+}
+
+// Format a number as currency: 124500 → "$124.5K"
+function formatCurrency(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
+}
 
 export default function AnalyticsCenter() {
   const [activeRange, setActiveRange] = useState('Last 12 Months');
   const [hoveredPoint, setHoveredPoint] = useState<{ x: string; y: string } | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const mrrDataPoints = [
-    { month: 'Jan', val: '$40K', x: 2, y: 80 },
-    { month: 'Mar', val: '$60K', x: 20, y: 60 },
-    { month: 'May', val: '$75K', x: 40, y: 45 },
-    { month: 'Jul', val: '$95K', x: 60, y: 25 },
-    { month: 'Sep', val: '$110K', x: 80, y: 15 },
-    { month: 'Nov', val: '$124.5K', x: 98, y: 5 },
-  ];
+  useEffect(() => {
+    async function fetchStats() {
+      setLoading(true);
+      const result = await analyticsAPI.getDashboard();
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setStats(result.data as DashboardStats);
+      }
+      setLoading(false);
+    }
+    fetchStats();
+  }, []);
+
+  // Build chart data points from real monthlyRevenue data
+  const mrrDataPoints = stats?.monthlyRevenue?.map((item, i, arr) => {
+    const maxRevenue = Math.max(...arr.map((d) => d.revenue), 1);
+    const x = arr.length === 1 ? 50 : (i / (arr.length - 1)) * 96 + 2;
+    const y = 85 - ((item.revenue / maxRevenue) * 75);
+    return {
+      month: item.month.split(' ')[0], // "Jun 2026" → "Jun"
+      val: formatCurrency(item.revenue),
+      x: Math.round(x),
+      y: Math.round(y),
+    };
+  }) ?? [];
+
+  // Build SVG path from data points
+  const svgPath = mrrDataPoints.length > 1
+    ? mrrDataPoints
+        .map((pt, i) =>
+          i === 0 ? `M ${pt.x} ${pt.y}` : `L ${pt.x} ${pt.y}`
+        )
+        .join(' ')
+    : 'M 2 80 L 98 5';
+
+  const svgFill = mrrDataPoints.length > 1
+    ? `${svgPath} L ${mrrDataPoints[mrrDataPoints.length - 1].x} 100 L ${mrrDataPoints[0].x} 100 Z`
+    : 'M 2 80 L 98 5 L 98 100 L 2 100 Z';
+
+  // Derived KPI values
+  const totalRevenue = stats?.totalRevenue ?? 0;
+  const totalContacts = stats?.totalContacts ?? 0;
+  const conversionRate = stats?.conversionRate ?? 0;
+  const wonDeals = stats?.wonDeals ?? 0;
+  const totalDeals = stats?.totalDeals ?? 0;
+  const avgDealSize = wonDeals > 0 ? totalRevenue / wonDeals : 0;
+
+  // Churn rate from contactsByStatus
+  const churned = stats?.contactsByStatus?.find((s) => s.status === 'churned')?.count ?? 0;
+  const customers = stats?.contactsByStatus?.find((s) => s.status === 'customer')?.count ?? 0;
+  const churnRate = customers + churned > 0
+    ? ((churned / (customers + churned)) * 100).toFixed(1)
+    : '0.0';
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-[20px] border border-error/30 bg-error-container/10 p-md text-error text-center">
+        Failed to load analytics: {error}
+        <br />
+        <span className="text-on-surface-variant text-sm">Make sure your Python backend is running at {process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-lg">
@@ -39,29 +125,33 @@ export default function AnalyticsCenter() {
         </div>
       </div>
 
-      {/* Bento Grid KPI Cards */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
-        {/* Total MRR */}
+        {/* Total Revenue */}
         <div className="rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface p-md flex flex-col justify-between shadow-xs hover:border-primary/30 transition-all">
           <div className="flex justify-between items-start">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total MRR</span>
+            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Revenue</span>
             <TrendingUp className="text-secondary" size={24} />
           </div>
           <div className="mt-md">
-            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">$124.5K</h3>
-            <p className="font-label-sm text-label-sm text-secondary mt-1">+12.4% vs last month</p>
+            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">
+              {formatCurrency(totalRevenue)}
+            </h3>
+            <p className="font-label-sm text-label-sm text-secondary mt-1">From {wonDeals} won deals</p>
           </div>
         </div>
 
         {/* Active Customers */}
         <div className="rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface p-md flex flex-col justify-between shadow-xs hover:border-primary/30 transition-all">
           <div className="flex justify-between items-start">
-            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Active Customers</span>
+            <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Active Contacts</span>
             <Users className="text-primary" size={24} />
           </div>
           <div className="mt-md">
-            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">1,492</h3>
-            <p className="font-label-sm text-label-sm text-primary mt-1">+5.2% vs last month</p>
+            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">
+              {totalContacts.toLocaleString()}
+            </h3>
+            <p className="font-label-sm text-label-sm text-primary mt-1">{customers} customers</p>
           </div>
         </div>
 
@@ -72,30 +162,34 @@ export default function AnalyticsCenter() {
             <TrendingDown className="text-error" size={24} />
           </div>
           <div className="mt-md">
-            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">1.2%</h3>
-            <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">-0.3% vs last month</p>
+            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">
+              {churnRate}%
+            </h3>
+            <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">{churned} churned contacts</p>
           </div>
         </div>
 
-        {/* Average Deal Size */}
+        {/* Avg Deal Size */}
         <div className="rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface p-md flex flex-col justify-between shadow-xs hover:border-primary/30 transition-all">
           <div className="flex justify-between items-start">
             <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Avg Deal Size</span>
             <CircleDollarSign className="text-tertiary" size={24} />
           </div>
           <div className="mt-md">
-            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">$8,450</h3>
-            <p className="font-label-sm text-label-sm text-tertiary mt-1">+2.1% vs last month</p>
+            <h3 className="font-headline-lg text-headline-lg text-on-surface dark:text-inverse-on-surface font-bold">
+              {formatCurrency(avgDealSize)}
+            </h3>
+            <p className="font-label-sm text-label-sm text-tertiary mt-1">{conversionRate}% win rate</p>
           </div>
         </div>
       </div>
 
-      {/* Charts section */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg">
-        {/* Main Line Graph: MRR Growth */}
+        {/* MRR Growth Line Chart */}
         <div className="lg:col-span-8 rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface p-md flex flex-col relative overflow-hidden shadow-xs">
           <div className="flex justify-between items-center mb-6 z-10">
-            <h3 className="font-headline-md text-headline-md text-on-surface dark:text-inverse-on-surface font-bold">MRR Growth</h3>
+            <h3 className="font-headline-md text-headline-md text-on-surface dark:text-inverse-on-surface font-bold">Revenue Growth</h3>
             <select
               value={activeRange}
               onChange={(e) => setActiveRange(e.target.value)}
@@ -107,120 +201,129 @@ export default function AnalyticsCenter() {
             </select>
           </div>
 
-          {/* Interactive Line Chart */}
           <div className="flex-1 relative w-full min-h-[300px] flex items-end justify-between px-2 pb-6">
             {/* Grid Lines */}
             <div className="absolute inset-0 flex flex-col justify-between pb-12 pt-8 pointer-events-none">
-              <div className="w-full h-px bg-outline-variant/30 dark:bg-outline/20"></div>
-              <div className="w-full h-px bg-outline-variant/30 dark:bg-outline/20"></div>
-              <div className="w-full h-px bg-outline-variant/30 dark:bg-outline/20"></div>
-              <div className="w-full h-px bg-outline-variant/30 dark:bg-outline/20"></div>
-              <div className="w-full h-px bg-outline-variant/30 dark:bg-outline/20"></div>
-            </div>
-
-            {/* SVG Path */}
-            <svg className="absolute inset-0 w-full h-[calc(100%-3rem)] mt-8" preserveAspectRatio="none" viewBox="0 0 100 100">
-              <path
-                className="text-primary"
-                d="M 2 80 C 10 75, 15 65, 20 60 C 25 55, 30 50, 40 45 C 50 40, 55 25, 60 20 C 70 15, 75 16, 80 15 C 90 14, 95 6, 98 5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                vectorEffect="non-scaling-stroke"
-              />
-              <path
-                className="text-primary opacity-10"
-                d="M 2 80 C 10 75, 15 65, 20 60 C 25 55, 30 50, 40 45 C 50 40, 55 25, 60 20 C 70 15, 75 16, 80 15 C 90 14, 95 6, 98 5 L 98 100 L 2 100 Z"
-                fill="currentColor"
-              />
-            </svg>
-
-            {/* Interactivity Dots */}
-            <div className="absolute inset-0 w-full h-[calc(100%-3rem)] mt-8">
-              {mrrDataPoints.map((pt) => (
-                <button
-                  key={pt.month}
-                  onMouseEnter={() => setHoveredPoint({ x: pt.month, y: pt.val })}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                  className="absolute w-3 h-3 bg-primary border-2 border-surface dark:border-inverse-surface rounded-full -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform cursor-pointer"
-                  style={{ left: `${pt.x}%`, top: `${pt.y}%` }}
-                  aria-label={`MRR for ${pt.month} is ${pt.val}`}
-                />
+              {[0,1,2,3,4].map((i) => (
+                <div key={i} className="w-full h-px bg-outline-variant/30 dark:bg-outline/20" />
               ))}
             </div>
 
-            {/* Interactive Tooltip */}
-            {hoveredPoint && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-inverse-surface dark:bg-surface text-inverse-on-surface dark:text-on-surface px-md py-xs rounded-xl font-label-md text-label-md shadow-md animate-scale-up border border-outline-variant/20">
-                {hoveredPoint.x}: <span className="font-bold text-primary">{hoveredPoint.y}</span>
+            {mrrDataPoints.length > 0 ? (
+              <>
+                {/* SVG Path */}
+                <svg className="absolute inset-0 w-full h-[calc(100%-3rem)] mt-8" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  <path
+                    className="text-primary"
+                    d={svgPath}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <path
+                    className="text-primary opacity-10"
+                    d={svgFill}
+                    fill="currentColor"
+                  />
+                </svg>
+
+                {/* Interactive Dots */}
+                <div className="absolute inset-0 w-full h-[calc(100%-3rem)] mt-8">
+                  {mrrDataPoints.map((pt) => (
+                    <button
+                      key={pt.month}
+                      onMouseEnter={() => setHoveredPoint({ x: pt.month, y: pt.val })}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                      className="absolute w-3 h-3 bg-primary border-2 border-surface dark:border-inverse-surface rounded-full -translate-x-1/2 -translate-y-1/2 hover:scale-150 transition-transform cursor-pointer"
+                      style={{ left: `${pt.x}%`, top: `${pt.y}%` }}
+                      aria-label={`Revenue for ${pt.month} is ${pt.val}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Tooltip */}
+                {hoveredPoint && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-inverse-surface dark:bg-surface text-inverse-on-surface dark:text-on-surface px-md py-xs rounded-xl font-label-md text-label-md shadow-md border border-outline-variant/20 z-10">
+                    {hoveredPoint.x}: <span className="font-bold text-primary">{hoveredPoint.y}</span>
+                  </div>
+                )}
+
+                {/* X Axis Labels */}
+                <div className="absolute bottom-0 w-full flex justify-between px-2 text-on-surface-variant font-label-sm text-label-sm">
+                  {mrrDataPoints.map((pt) => (
+                    <span key={pt.month}>{pt.month}</span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant font-label-md">
+                No revenue data yet. Close some deals to see the chart!
               </div>
             )}
-
-            {/* X Axis Labels */}
-            <div className="absolute bottom-0 w-full flex justify-between px-2 text-on-surface-variant font-label-sm text-label-sm">
-              {mrrDataPoints.map((pt) => (
-                <span key={pt.month}>{pt.month}</span>
-              ))}
-            </div>
           </div>
         </div>
 
-        {/* Vertical Bar Chart: Sales Forecast */}
+        {/* Sales Forecast Bar Chart — pipeline by stage */}
         <div className="lg:col-span-4 rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface p-md flex flex-col shadow-xs">
           <div className="mb-6">
             <h3 className="font-headline-sm text-headline-sm text-on-surface dark:text-inverse-on-surface font-bold">
-              Sales Forecast
+              Pipeline by Stage
             </h3>
             <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
-              Pipeline probability next 4 quarters
+              Deal count per pipeline stage
             </p>
           </div>
 
           <div className="flex-1 flex items-end justify-around pb-6 relative h-full min-h-[250px] border-b border-outline-variant/30">
-            {/* Chart Bars */}
-            <div className="w-5 h-[45%] bg-surface-variant dark:bg-surface-dim/40 rounded-t-full relative group">
-              <div className="absolute bottom-0 w-full h-[60%] bg-secondary rounded-t-full"></div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-sm text-label-sm text-on-surface-variant font-semibold">Q1</span>
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface dark:bg-surface dark:text-on-surface border border-outline-variant/20 font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm">
-                $45k / $75k
+            {(stats?.dealsByStage ?? [])
+              .filter((s) => !['won', 'lost'].includes(s.stage))
+              .map((stage) => {
+                const maxCount = Math.max(
+                  ...(stats?.dealsByStage ?? [])
+                    .filter((s) => !['won', 'lost'].includes(s.stage))
+                    .map((s) => s.count),
+                  1
+                );
+                const heightPct = Math.max((stage.count / maxCount) * 85, 8);
+                const labels: Record<string, string> = {
+                  lead: 'Lead', qualified: 'Qual', proposal: 'Prop', negotiation: 'Neg',
+                };
+                return (
+                  <div
+                    key={stage.stage}
+                    className="w-5 bg-surface-variant dark:bg-surface-dim/40 rounded-t-full relative group"
+                    style={{ height: `${heightPct}%` }}
+                  >
+                    <div className="absolute bottom-0 w-full bg-secondary rounded-t-full" style={{ height: '100%' }} />
+                    <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-sm text-label-sm text-on-surface-variant font-semibold whitespace-nowrap">
+                      {labels[stage.stage] ?? stage.stage}
+                    </span>
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface dark:bg-surface dark:text-on-surface border border-outline-variant/20 font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm">
+                      {stage.count} deal{stage.count !== 1 ? 's' : ''} · {formatCurrency(stage.value)}
+                    </div>
+                  </div>
+                );
+              })}
+            {(stats?.dealsByStage ?? []).filter((s) => !['won', 'lost'].includes(s.stage)).length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant font-label-md text-center px-4">
+                No active pipeline deals yet
               </div>
-            </div>
-            <div className="w-5 h-[65%] bg-surface-variant dark:bg-surface-dim/40 rounded-t-full relative group">
-              <div className="absolute bottom-0 w-full h-[75%] bg-secondary rounded-t-full"></div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-sm text-label-sm text-on-surface-variant font-semibold">Q2</span>
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface dark:bg-surface dark:text-on-surface border border-outline-variant/20 font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm">
-                $90k / $120k
-              </div>
-            </div>
-            <div className="w-5 h-[85%] bg-surface-variant dark:bg-surface-dim/40 rounded-t-full relative group">
-              <div className="absolute bottom-0 w-full h-[40%] bg-secondary rounded-t-full"></div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-sm text-label-sm text-on-surface-variant font-semibold">Q3</span>
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface dark:bg-surface dark:text-on-surface border border-outline-variant/20 font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm">
-                $70k / $170k
-              </div>
-            </div>
-            <div className="w-5 h-[100%] bg-surface-variant dark:bg-surface-dim/40 rounded-t-full relative group">
-              <div className="absolute bottom-0 w-full h-[20%] bg-secondary rounded-t-full"></div>
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-sm text-label-sm text-on-surface-variant font-semibold">Q4</span>
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface dark:bg-surface dark:text-on-surface border border-outline-variant/20 font-label-sm text-label-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm">
-                $40k / $200k
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Legend */}
           <div className="flex justify-center gap-4 mt-6 font-label-sm text-label-sm">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-secondary"></span> Committed
+              <span className="w-2.5 h-2.5 rounded-full bg-secondary" /> Active Deals
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-surface-variant dark:bg-surface-dim"></span> Best Case
+              <span className="w-2.5 h-2.5 rounded-full bg-surface-variant dark:bg-surface-dim" /> Target
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Reports Section */}
+      {/* Recent Reports */}
       <div className="rounded-[20px] border border-outline-variant dark:border-outline bg-surface-container-lowest dark:bg-inverse-surface overflow-hidden shadow-xs">
         <div className="p-md border-b border-outline-variant dark:border-outline bg-surface-container-low dark:bg-surface-dim">
           <h3 className="font-headline-sm text-headline-sm text-on-surface dark:text-inverse-on-surface font-bold">

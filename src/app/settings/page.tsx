@@ -205,12 +205,12 @@ export default function Settings() {
                 <input
                   type="password"
                   placeholder="Current Password"
-                  className="px-sm py-2 rounded-lg border border-outline-variant bg-surface-bright dark:bg-surface-container-low text-body-sm outline-none w-full max-w-md"
+                  className="px-sm py-2 rounded-lg border border-outline-variant bg-surface-bright dark:bg-surface-container-low text-body-sm outline-none w-full max-w-[448px]"
                 />
                 <input
                   type="password"
                   placeholder="New Password"
-                  className="px-sm py-2 rounded-lg border border-outline-variant bg-surface-bright dark:bg-surface-container-low text-body-sm outline-none w-full max-w-md"
+                  className="px-sm py-2 rounded-lg border border-outline-variant bg-surface-bright dark:bg-surface-container-low text-body-sm outline-none w-full max-w-[448px]"
                 />
               </div>
               <div className="flex flex-col gap-2 pt-sm">
@@ -248,7 +248,7 @@ export default function Settings() {
             </div>
             <div className="space-y-sm pt-sm">
               <h4 className="font-label-md text-on-surface dark:text-inverse-on-surface font-bold">Payment Method</h4>
-              <div className="flex justify-between items-center border border-outline-variant/60 bg-surface dark:bg-surface-dim/20 p-sm rounded-lg w-full max-w-md">
+              <div className="flex justify-between items-center border border-outline-variant/60 bg-surface dark:bg-surface-dim/20 p-sm rounded-lg w-full max-w-[448px]">
                 <div className="flex items-center gap-sm">
                   <CreditCard className="text-secondary" size={24} />
                   <span className="font-body-sm">Visa ending in 4242</span>

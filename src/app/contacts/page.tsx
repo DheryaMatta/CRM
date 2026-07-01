@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useCRM, Contact } from '@/context/CRMContext';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, UserPlus, ChevronRight, X } from 'lucide-react';
+import { contactsAPI } from '@/lib/api';
 
 export default function ContactsDirectory() {
-  const { contacts, addContact } = useCRM();
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -22,17 +23,23 @@ export default function ContactsDirectory() {
   const [about, setAbout] = useState('');
   const [tagsInput, setTagsInput] = useState('');
 
-  // Search filtering
-  const filteredContacts = contacts.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      c.company.toLowerCase().includes(q)
-    );
-  });
+  const fetchContacts = async () => {
+    setLoading(true);
+    const result = await contactsAPI.list({ search });
+    if (result.data) {
+      setContacts(result.data);
+    }
+    setLoading(false);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContacts();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email) return;
 
@@ -44,7 +51,7 @@ export default function ContactsDirectory() {
     // Standard profile picture fallback
     const avatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKO1uumHm550LeYv-jv9HCJW12b821kQyvwKL1yeBUIYpGlkNlZXLW2WczP4b_LeJfOykcgCQ-cWBYDvtw4LtCymvjU8YoG3oupOIVERh5-_XAdVrn3SWoeL3_ospW8nzb4GzkaCxd6Vlf-beKqUGrLKzauOcoep7Fa3d5-DUQ11bXA2o9M3JQsRaG0qi5LV_JhXgSRgasZwalQo7IbLG005qr2o7jzbkKCHl-gewTB38BODPw0UWISJiXi35rHxIj0rGtup44K-rv';
 
-    addContact({
+    await contactsAPI.create({
       name,
       email,
       phone: phone || '+1 (555) 000-0000',
@@ -70,6 +77,7 @@ export default function ContactsDirectory() {
     setAbout('');
     setTagsInput('');
     setModalOpen(false);
+    fetchContacts();
   };
 
   return (
@@ -118,14 +126,20 @@ export default function ContactsDirectory() {
               </tr>
             </thead>
             <tbody className="font-body-md text-body-md text-on-surface dark:text-inverse-on-surface">
-              {filteredContacts.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-xl text-on-surface-variant">
+                    Loading contacts...
+                  </td>
+                </tr>
+              ) : contacts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-xl text-on-surface-variant">
                     No contacts found matching search terms.
                   </td>
                 </tr>
               ) : (
-                filteredContacts.map((c) => (
+                contacts.map((c) => (
                   <tr key={c.id} className="border-b border-outline-variant/30 last:border-0 hover:bg-surface-container-low/20 transition-colors group">
                     <td className="py-sm px-md">
                       <Link href={`/contacts/${c.id}`} className="flex items-center gap-sm group-hover:text-primary transition-all">
@@ -180,7 +194,7 @@ export default function ContactsDirectory() {
         </div>
         <div className="px-md py-sm border-t border-outline-variant dark:border-outline flex items-center justify-between text-on-surface-variant bg-surface-container-low/20">
           <span className="font-body-sm text-body-sm">
-            Showing {filteredContacts.length} of {contacts.length} contacts
+            Showing {contacts.length} contacts
           </span>
         </div>
       </div>
@@ -195,7 +209,7 @@ export default function ContactsDirectory() {
           />
 
           {/* Form Content */}
-          <div className="relative w-full max-w-lg bg-surface dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-xl p-md md:p-lg shadow-xl z-10 animate-scale-up">
+          <div className="relative w-full max-w-[512px] bg-surface dark:bg-inverse-surface border border-outline-variant dark:border-outline rounded-xl p-md md:p-lg shadow-xl z-10 animate-scale-up">
             <div className="flex justify-between items-center mb-md border-b border-outline-variant pb-3">
               <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface dark:text-inverse-on-surface">
                 Add New Contact
