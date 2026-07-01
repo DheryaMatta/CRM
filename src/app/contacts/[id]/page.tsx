@@ -1,19 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useCRM } from '@/context/CRMContext';
 import Link from 'next/link';
 import { AlertTriangle, ArrowLeft, MapPin, Mail, Phone, Radio, X, Calendar, StickyNote } from 'lucide-react';
+import { contactsAPI, eventsAPI } from '@/lib/api';
 
 export default function ContactProfile() {
   const { id } = useParams();
   const router = useRouter();
-  const { contacts, addTimelineEvent } = useCRM();
 
-  // Find current contact
+  const [contact, setContact] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const contactId = typeof id === 'string' ? id : '';
-  const contact = contacts.find((c) => c.id === contactId);
+
+  useEffect(() => {
+    if (contactId) {
+      contactsAPI.get(contactId).then(res => {
+        setContact(res.data);
+        setLoading(false);
+      });
+    }
+  }, [contactId]);
 
   // Active filter for timeline
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'mail' | 'call'>('all');
@@ -23,6 +32,14 @@ export default function ContactProfile() {
   const [newEventContent, setNewEventContent] = useState('');
   const [newEventType, setNewEventType] = useState<'event' | 'mail' | 'call' | 'note'>('note');
   const [showLogForm, setShowLogForm] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
+        <p>Loading contact details...</p>
+      </div>
+    );
+  }
 
   if (!contact) {
     return (
@@ -37,27 +54,33 @@ export default function ContactProfile() {
     );
   }
 
-  // Filtered timeline events
-  const filteredTimeline = contact.timeline.filter((evt) => {
+  // Filtered timeline events (using backend events)
+  const timeline = contact.events || [];
+  const filteredTimeline = timeline.filter((evt: any) => {
     if (timelineFilter === 'all') return true;
     return evt.type === timelineFilter;
   });
 
-  const handleLogEvent = (e: React.FormEvent) => {
+  const handleLogEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle || !newEventContent) return;
 
-    addTimelineEvent(contact.id, {
-      type: newEventType,
+    await eventsAPI.create({
       title: newEventTitle,
-      content: newEventContent,
-      author: 'John Doe', // Simulated user
+      description: newEventContent,
+      type: newEventType,
+      contact_id: contact.id,
+      start_time: new Date().toISOString()
     });
 
     setNewEventTitle('');
     setNewEventContent('');
     setNewEventType('note');
     setShowLogForm(false);
+    
+    // Refresh contact data to get the new event
+    const res = await contactsAPI.get(contactId);
+    if (res.data) setContact(res.data);
   };
 
   return (
@@ -77,8 +100,8 @@ export default function ContactProfile() {
       <div className="bg-surface-container-lowest dark:bg-inverse-surface rounded-xl p-lg border border-outline-variant dark:border-outline flex flex-col md:flex-row gap-lg items-start md:items-center justify-between shadow-xs">
         <div className="flex items-center gap-lg">
           <img
-            src={contact.avatar}
-            alt={contact.name}
+            src={contact.avatar_url || contact.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKO1uumHm550LeYv-jv9HCJW12b821kQyvwKL1yeBUIYpGlkNlZXLW2WczP4b_LeJfOykcgCQ-cWBYDvtw4LtCymvjU8YoG3oupOIVERh5-_XAdVrn3SWoeL3_ospW8nzb4GzkaCxd6Vlf-beKqUGrLKzauOcoep7Fa3d5-DUQ11bXA2o9M3JQsRaG0qi5LV_JhXgSRgasZwalQo7IbLG005qr2o7jzbkKCHl-gewTB38BODPw0UWISJiXi35rHxIj0rGtup44K-rv'}
+            alt={contact.name || 'Contact'}
             className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-surface dark:border-surface-dim shadow-sm"
           />
           <div>
@@ -88,9 +111,9 @@ export default function ContactProfile() {
               </h2>
               <span
                 className={`px-3 py-1 rounded-full font-label-sm text-label-sm border ${
-                  contact.status === 'Customer'
+                  contact.status?.toLowerCase() === 'customer'
                     ? 'bg-[#d5e3fd] text-[#001f26] border-[#acedff]'
-                    : contact.status === 'Prospect'
+                    : contact.status?.toLowerCase() === 'prospect'
                     ? 'bg-[#ffe4cc] text-[#6b3100] border-[#ffb783]'
                     : 'bg-surface-container text-on-surface border-outline-variant'
                 }`}
@@ -99,20 +122,20 @@ export default function ContactProfile() {
               </span>
             </div>
             <p className="font-body-lg text-body-lg text-on-surface-variant mb-sm">
-              {contact.role} at <span className="font-semibold text-primary">{contact.company}</span>
+              {contact.position || contact.role} at <span className="font-semibold text-primary">{contact.company}</span>
             </p>
             <div className="flex flex-wrap gap-md text-on-surface-variant font-body-sm text-body-sm">
               <div className="flex items-center gap-xs">
                 <MapPin size={16} />
-                {contact.location}
+                {contact.location || 'Remote'}
               </div>
               <div className="flex items-center gap-xs">
                 <Mail size={16} />
-                {contact.email}
+                {contact.email || 'No email'}
               </div>
               <div className="flex items-center gap-xs">
                 <Phone size={16} />
-                {contact.phone}
+                {contact.phone || 'No phone'}
               </div>
             </div>
           </div>
@@ -127,14 +150,17 @@ export default function ContactProfile() {
             <Mail size={16} /> Email
           </a>
           <button
-            onClick={() => {
-              addTimelineEvent(contact.id, {
+            onClick={async () => {
+              await eventsAPI.create({
                 type: 'call',
                 title: 'Outbound Phone Call',
-                content: 'Initiated outbound call to client.',
-                author: 'John Doe',
+                description: 'Initiated outbound call to client.',
+                contact_id: contact.id,
+                start_time: new Date().toISOString()
               });
               alert(`Simulating phone call connection to ${contact.phone}... Call has been logged.`);
+              const res = await contactsAPI.get(contactId);
+              if (res.data) setContact(res.data);
             }}
             className="flex-1 md:flex-none flex items-center justify-center gap-xs px-md py-3 rounded-[20px] bg-primary text-on-primary hover:bg-primary-container transition-colors font-label-md text-label-md shadow-xs cursor-pointer"
           >
@@ -188,12 +214,12 @@ export default function ContactProfile() {
             <div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface dark:text-inverse-on-surface font-bold mb-sm">About</h3>
               <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                {contact.about}
+                {contact.notes || contact.about || 'No additional notes.'}
               </p>
             </div>
             <div>
               <div className="flex flex-wrap gap-2">
-                {contact.tags.map((tag) => (
+                {(contact.tags || []).map((tag: string) => (
                   <span
                     key={tag}
                     className="px-3 py-1 rounded-full bg-surface-container-low dark:bg-surface-dim text-on-surface dark:text-inverse-on-surface font-label-sm text-label-sm border border-outline-variant dark:border-outline"
@@ -361,17 +387,17 @@ export default function ContactProfile() {
                         <h4 className="font-body-md text-body-md font-semibold text-on-surface dark:text-inverse-on-surface">
                           {evt.title}
                         </h4>
-                        <span className="font-label-sm text-label-sm text-on-surface-variant">{evt.date}</span>
+                        <span className="font-label-sm text-label-sm text-on-surface-variant">{new Date(evt.start_time).toLocaleString()}</span>
                       </div>
                       <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-sm whitespace-pre-line">
-                        {evt.content}
+                        {evt.description || evt.content}
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="w-6 h-6 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-sm text-[10px] font-bold">
-                          {evt.author.split(' ').map((n) => n[0]).join('')}
+                          {((evt.author || 'Me').split(' ').map((n: string) => n[0]).join(''))}
                         </span>
                         <span className="font-label-sm text-label-sm text-on-surface-variant">
-                          Logged by {evt.author}
+                          Logged by {evt.author || 'System'}
                         </span>
                       </div>
                     </div>

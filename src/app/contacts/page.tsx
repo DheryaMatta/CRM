@@ -56,12 +56,10 @@ export default function ContactsDirectory() {
       email,
       phone: phone || '+1 (555) 000-0000',
       company: company || 'Independent',
-      role: role || 'Professional',
-      location: location || 'Remote',
-      status,
-      score: Number(score) || 50,
-      avatar,
-      about: about || 'New lead added to system.',
+      position: role || 'Professional',
+      status: status.toLowerCase(),
+      avatar_url: avatar,
+      notes: about || 'New lead added to system.',
       tags: tags.length > 0 ? tags : ['New Lead'],
     });
 
@@ -144,8 +142,8 @@ export default function ContactsDirectory() {
                     <td className="py-sm px-md">
                       <Link href={`/contacts/${c.id}`} className="flex items-center gap-sm group-hover:text-primary transition-all">
                         <img
-                          src={c.avatar}
-                          alt={c.name}
+                          src={c.avatar_url || c.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKO1uumHm550LeYv-jv9HCJW12b821kQyvwKL1yeBUIYpGlkNlZXLW2WczP4b_LeJfOykcgCQ-cWBYDvtw4LtCymvjU8YoG3oupOIVERh5-_XAdVrn3SWoeL3_ospW8nzb4GzkaCxd6Vlf-beKqUGrLKzauOcoep7Fa3d5-DUQ11bXA2o9M3JQsRaG0qi5LV_JhXgSRgasZwalQo7IbLG005qr2o7jzbkKCHl-gewTB38BODPw0UWISJiXi35rHxIj0rGtup44K-rv'}
+                          alt={c.name || 'Contact'}
                           className="w-10 h-10 rounded-full object-cover border border-outline-variant"
                         />
                         <div>
@@ -158,9 +156,9 @@ export default function ContactsDirectory() {
                     <td className="py-sm px-md">
                       <span
                         className={`inline-flex items-center px-sm py-base rounded-full font-label-sm text-label-sm ${
-                          c.status === 'Lead'
+                          c.status?.toLowerCase() === 'lead'
                             ? 'bg-surface-container-high dark:bg-surface-dim text-primary border border-primary-fixed-dim/20'
-                            : c.status === 'Prospect'
+                            : c.status?.toLowerCase() === 'prospect'
                             ? 'bg-secondary-container/40 dark:bg-secondary-container/10 text-on-secondary-container border border-secondary-fixed/20'
                             : 'bg-tertiary-container/30 dark:bg-tertiary-container/10 text-on-tertiary-container border border-tertiary-fixed/20'
                         }`}
@@ -170,13 +168,13 @@ export default function ContactsDirectory() {
                     </td>
                     <td className="py-sm px-md">
                       <div className="flex items-center gap-sm">
-                        <div className="font-semibold w-6">{c.score}</div>
+                        <div className="font-semibold w-6">{c.score || 50}</div>
                         <div className="w-24 h-2 bg-surface-container-high dark:bg-surface-dim rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
-                              c.score >= 80 ? 'bg-primary' : c.score >= 60 ? 'bg-secondary' : 'bg-tertiary'
+                              (c.score || 50) >= 80 ? 'bg-primary' : (c.score || 50) >= 60 ? 'bg-secondary' : 'bg-tertiary'
                             }`}
-                            style={{ width: `${c.score}%` }}
+                            style={{ width: `${c.score || 50}%` }}
                           ></div>
                         </div>
                       </div>
